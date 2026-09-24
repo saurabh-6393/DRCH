@@ -1,0 +1,30 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+Thumbs.db
+
+# Backend
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/coverage/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/coverage/
+
+# Docker
+pgdata/
+miniodata/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+*.swp
+*.swo
