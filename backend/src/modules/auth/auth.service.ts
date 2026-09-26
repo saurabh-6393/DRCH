@@ -9,6 +9,7 @@ import {
   verifyRefreshToken,
 } from '../../shared/tokens';
 import { RegisterInput, LoginInput, UserRow } from './auth.types';
+import { logAudit } from '../audit/audit.service';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -16,7 +17,7 @@ const BCRYPT_ROUNDS = 12;
 // REGISTER
 // ============================================================
 
-export async function registerUser(input: RegisterInput) {
+export async function registerUser(input: RegisterInput, ipAddress?: string) {
   const { email, password, displayName } = input;
 
   const client = await getClient();
@@ -74,6 +75,18 @@ export async function registerUser(input: RegisterInput) {
 
     await client.query('COMMIT');
 
+    await logAudit({
+      action: 'USER_REGISTERED',
+      actorId: userId,
+      targetType: 'USER',
+      targetId: userId,
+      metadata: {
+        email,
+        displayName: displayName || null,
+      },
+      ipAddress,
+    });
+
     return {
       user: { id: userId, email, displayName: displayName || null, roles },
       accessToken,
@@ -91,7 +104,10 @@ export async function registerUser(input: RegisterInput) {
 // LOGIN
 // ============================================================
 
-export async function loginUser(input: LoginInput) {
+export async function loginUser(
+  input: LoginInput,
+  context?: { ipAddress?: string; userAgent?: string }
+) {
   const { email, password } = input;
 
   // Find user
@@ -100,6 +116,17 @@ export async function loginUser(input: LoginInput) {
     [email]
   );
   if (result.rows.length === 0) {
+    await logAudit({
+      action: 'LOGIN_FAILED',
+      actorId: null,
+      targetType: 'USER',
+      targetId: '00000000-0000-0000-0000-000000000000',
+      metadata: {
+        attemptedEmail: email,
+        reason: 'Invalid email or password.',
+      },
+      ipAddress: context?.ipAddress,
+    });
     throw AppError.unauthenticated('Invalid email or password.');
   }
   const user = result.rows[0];
@@ -107,6 +134,17 @@ export async function loginUser(input: LoginInput) {
   // Compare password
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
+    await logAudit({
+      action: 'LOGIN_FAILED',
+      actorId: user.id,
+      targetType: 'USER',
+      targetId: user.id,
+      metadata: {
+        attemptedEmail: email,
+        reason: 'Invalid email or password.',
+      },
+      ipAddress: context?.ipAddress,
+    });
     throw AppError.unauthenticated('Invalid email or password.');
   }
 
@@ -133,6 +171,18 @@ export async function loginUser(input: LoginInput) {
      VALUES ($1, $2, $3, $4)`,
     [sessionId, user.id, tokenHash, expiresAt]
   );
+
+  await logAudit({
+    action: 'LOGIN_SUCCESS',
+    actorId: user.id,
+    targetType: 'USER',
+    targetId: user.id,
+    metadata: {
+      email: user.email,
+      userAgent: context?.userAgent || null,
+    },
+    ipAddress: context?.ipAddress,
+  });
 
   return {
     user: { id: user.id, email: user.email, displayName: user.display_name, roles },
@@ -225,14 +275,33 @@ export async function refreshSession(currentRefreshToken: string) {
 // LOGOUT (Session Revocation)
 // ============================================================
 
-export async function logoutSession(currentRefreshToken: string) {
+export async function logoutSession(currentRefreshToken: string, ipAddress?: string) {
   const tokenHash = hashToken(currentRefreshToken);
+
+  const sessionRes = await query<{ id: string; user_id: string }>(
+    `SELECT id, user_id FROM sessions WHERE token_hash = $1 AND revoked_at IS NULL`,
+    [tokenHash]
+  );
 
   await query(
     `UPDATE sessions SET revoked_at = NOW()
      WHERE token_hash = $1 AND revoked_at IS NULL`,
     [tokenHash]
   );
+
+  if (sessionRes.rows.length > 0) {
+    const session = sessionRes.rows[0];
+    await logAudit({
+      action: 'SESSION_REVOKED',
+      actorId: session.user_id,
+      targetType: 'SESSION',
+      targetId: session.id,
+      metadata: {
+        userId: session.user_id,
+      },
+      ipAddress,
+    });
+  }
 }
 
 // ============================================================

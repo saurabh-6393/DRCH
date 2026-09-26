@@ -48,6 +48,10 @@ export class AppError extends Error {
     return new AppError(409, 'CONFLICT', message);
   }
 
+  static rateLimited(message = 'Too many requests. Please try again in 15 minutes.') {
+    return new AppError(429, 'RATE_LIMITED', message);
+  }
+
   static internal(message = 'An unexpected error occurred.') {
     return new AppError(500, 'INTERNAL_SERVER_ERROR', message);
   }

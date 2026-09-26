@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { requestIdMiddleware } from './middleware/requestId';
 import { errorHandler } from './middleware/errorHandler';
 import { sendSuccess } from './shared/response';
+import { AppError } from './shared/errors';
 import authRoutes from './modules/auth/auth.routes';
 import incidentsRoutes from './modules/incidents/incidents.routes';
 import verificationsRoutes from './modules/verifications/verifications.routes';
@@ -13,21 +14,60 @@ import sheltersRoutes from './modules/shelters/shelters.routes';
 import alertsRoutes from './modules/alerts/alerts.routes';
 import resourcesRoutes from './modules/resources/resources.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
+import auditRoutes from './modules/audit/audit.routes';
 
 const app = express();
+
+// Reverse proxy trust configuration (Contract §7.5)
+app.set('trust proxy', env.TRUST_PROXY_HOPS);
 
 // ============================================================
 // Global Middleware
 // ============================================================
 
-// Security headers (Helmet)
-app.use(helmet());
+// Security headers (Helmet) — hardened production configuration (Contract §6.1)
+if (env.NODE_ENV === 'production') {
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+      hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      },
+      referrerPolicy: {
+        policy: 'no-referrer-when-downgrade',
+      },
+      frameguard: {
+        action: 'deny',
+      },
+    })
+  );
+} else {
+  app.use(helmet());
+}
 
-// CORS — restrict to frontend origin, allow credentials (cookies)
+// CORS — strict match against env.FRONTEND_URL in production (Contract §6.2)
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin:
+      env.NODE_ENV === 'production'
+        ? (origin, callback) => {
+            if (!origin || origin === env.FRONTEND_URL) {
+              callback(null, true);
+            } else {
+              callback(null, false);
+            }
+          }
+        : (origin, callback) => callback(null, true),
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
   })
 );
 
@@ -60,6 +100,15 @@ app.use('/api/v1/shelters', sheltersRoutes);
 app.use('/api/v1/alerts', alertsRoutes);
 app.use('/api/v1/resources', resourcesRoutes);
 app.use('/api/v1/notifications', notificationsRoutes);
+app.use('/api/v1/audit', auditRoutes);
+
+// ============================================================
+// 404 Catch-All for Unmatched API Routes (Contract §6.5)
+// ============================================================
+
+app.use((_req, _res, next) => {
+  next(new AppError(404, 'NOT_FOUND', 'The requested API endpoint does not exist.'));
+});
 
 // ============================================================
 // Centralized Error Handler (must be last)

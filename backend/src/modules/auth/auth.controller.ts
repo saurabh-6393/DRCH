@@ -19,7 +19,7 @@ import { AppError } from '../../shared/errors';
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {
     const input = registerSchema.parse(req.body);
-    const result = await registerUser(input);
+    const result = await registerUser(input, req.ip);
     setAuthCookies(res, result.accessToken, result.refreshToken);
     return sendSuccess(res, { user: result.user }, 201);
   } catch (error) {
@@ -42,7 +42,10 @@ export async function register(req: Request, res: Response, next: NextFunction) 
 export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const input = loginSchema.parse(req.body);
-    const result = await loginUser(input);
+    const result = await loginUser(input, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string | undefined,
+    });
     setAuthCookies(res, result.accessToken, result.refreshToken);
     return sendSuccess(res, { user: result.user });
   } catch (error) {
@@ -85,7 +88,7 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
   try {
     const refreshToken = req.cookies?.refresh_token;
     if (refreshToken) {
-      await logoutSession(refreshToken);
+      await logoutSession(refreshToken, req.ip);
     }
     clearAuthCookies(res);
     return sendSuccess(res, { message: 'Logged out successfully.' });

@@ -25,7 +25,7 @@ export async function createAlertHandler(
       return next(AppError.unauthenticated('User context missing.'));
     }
 
-    const alert = await createAlert(userId, parseResult.data);
+    const alert = await createAlert(userId, parseResult.data, req.ip);
     return sendSuccess(res, alert, 201);
   } catch (error) {
     next(error);
@@ -56,7 +56,7 @@ export async function cancelAlertHandler(
       return next(AppError.validationFailed('Alert ID is required.'));
     }
 
-    const alert = await cancelAlert(alertId);
+    const alert = await cancelAlert(alertId, req.user?.id, req.ip);
     return sendSuccess(res, alert, 200);
   } catch (error) {
     next(error);

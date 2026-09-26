@@ -8,15 +8,37 @@ import {
   NotificationItem,
 } from './notifications.types';
 import { AlertItem } from '../alerts/alerts.types';
+import { env } from '../../config/env';
 
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BF7k_MOCK_VAPID_PUBLIC_KEY_1234567890';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'MOCK_VAPID_PRIVATE_KEY_1234567890';
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@drch.gov';
+const VAPID_PUBLIC_KEY = env.VAPID_PUBLIC_KEY || 'BF7k_MOCK_VAPID_PUBLIC_KEY_1234567890';
+const VAPID_PRIVATE_KEY = env.VAPID_PRIVATE_KEY || 'MOCK_VAPID_PRIVATE_KEY_1234567890';
+const VAPID_SUBJECT = env.VAPID_SUBJECT || 'mailto:admin@drch.gov';
 
 try {
+  if (env.NODE_ENV === 'production') {
+    if (
+      !VAPID_PUBLIC_KEY ||
+      VAPID_PUBLIC_KEY.includes('MOCK') ||
+      !VAPID_PRIVATE_KEY ||
+      VAPID_PRIVATE_KEY.includes('MOCK')
+    ) {
+      throw new Error(
+        'In production, VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be valid generated keys and cannot use development fallback/mock values.'
+      );
+    }
+  }
   webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 } catch (err: any) {
-  logger.warn('WebPush VAPID setup warning (using dev fallback keys)', { error: err.message });
+  if (env.NODE_ENV === 'production') {
+    logger.error('Failed to initialize WebPush with production VAPID details', {
+      error: err.message,
+    });
+    throw err;
+  } else {
+    logger.warn('WebPush VAPID setup warning (using dev fallback keys)', {
+      error: err.message,
+    });
+  }
 }
 
 export function getVapidPublicKey(): string {

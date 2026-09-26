@@ -74,7 +74,9 @@ export async function allocateResourceHandler(
       userRoles,
       userOrgId,
       resourceId,
-      parseResult.data
+      parseResult.data,
+      req.user?.id,
+      req.ip
     );
     return sendSuccess(res, allocation, 201);
   } catch (error) {
@@ -96,7 +98,7 @@ export async function deleteAllocationHandler(
     const userRoles = req.user?.roles || [];
     const userOrgId = (req.user as any)?.orgId || null;
 
-    await deleteAllocation(userRoles, userOrgId, allocationId);
+    await deleteAllocation(userRoles, userOrgId, allocationId, req.user?.id, req.ip);
     return sendSuccess(res, { message: 'Allocation deleted successfully.' }, 200);
   } catch (error) {
     next(error);

@@ -8,6 +8,7 @@ import {
   ResourceAllocationItem,
 } from './resources.types';
 import { getIOServer } from '../../socket/socket.server';
+import { logAudit } from '../audit/audit.service';
 
 export async function createResource(
   userOrgId: string | null,
@@ -82,7 +83,9 @@ export async function allocateResource(
   userRoles: string[],
   userOrgId: string | null,
   resourceId: string,
-  input: AllocateResourceInput
+  input: AllocateResourceInput,
+  actorId?: string,
+  ipAddress?: string
 ): Promise<ResourceAllocationItem> {
   const client = await getClient();
   const allocationId = crypto.randomUUID();
@@ -165,6 +168,23 @@ export async function allocateResource(
       input.targetId,
     ]);
 
+    await logAudit(
+      {
+        action: 'RESOURCE_ALLOCATED',
+        actorId: actorId || null,
+        targetType: 'RESOURCE_ALLOCATION',
+        targetId: allocationId,
+        metadata: {
+          resourceId,
+          quantity: input.allocatedQuantity,
+          targetType: input.targetType,
+          targetId: input.targetId,
+        },
+        ipAddress,
+      },
+      client
+    );
+
     await client.query('COMMIT');
 
     const row = allocResult.rows[0];
@@ -206,7 +226,9 @@ export async function allocateResource(
 export async function deleteAllocation(
   userRoles: string[],
   userOrgId: string | null,
-  allocationId: string
+  allocationId: string,
+  actorId?: string,
+  ipAddress?: string
 ): Promise<void> {
   const client = await getClient();
 
@@ -245,6 +267,21 @@ export async function deleteAllocation(
 
     // 3. Delete allocation
     await client.query(`DELETE FROM resource_allocations WHERE id = $1`, [allocationId]);
+
+    await logAudit(
+      {
+        action: 'RESOURCE_ALLOCATION_DELETED',
+        actorId: actorId || null,
+        targetType: 'RESOURCE_ALLOCATION',
+        targetId: allocationId,
+        metadata: {
+          resourceId: alloc.resource_id,
+          releasedQuantity: Number(alloc.allocated_quantity),
+        },
+        ipAddress,
+      },
+      client
+    );
 
     await client.query('COMMIT');
 

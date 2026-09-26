@@ -59,7 +59,7 @@ export async function submitVerifyHandler(req: Request, res: Response, next: Nex
     }
 
     const input = submitVerifySchema.parse(req.body);
-    const result = await submitAuthorityVerification(id, req.user.id, input);
+    const result = await submitAuthorityVerification(id, req.user.id, input, req.ip);
 
     sendSuccess(res, result, 200);
   } catch (error) {

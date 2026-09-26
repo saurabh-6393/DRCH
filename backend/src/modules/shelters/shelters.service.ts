@@ -5,6 +5,7 @@ import {
   UpdateCapacityInput,
   ShelterItem,
 } from './shelters.types';
+import { logAudit } from '../audit/audit.service';
 
 /**
  * Searches for operational shelters within radiusMeters (default 50,000 meters / 50km).
@@ -79,14 +80,20 @@ export async function createShelter(input: CreateShelterInput) {
 
 export async function updateShelterCapacity(
   shelterId: string,
-  input: UpdateCapacityInput
+  input: UpdateCapacityInput,
+  actorId?: string,
+  ipAddress?: string
 ) {
   // Check shelter exists and capacity bounds
-  const checkRes = await query(`SELECT capacity FROM shelters WHERE id = $1`, [shelterId]);
+  const checkRes = await query<{ capacity: number; available_capacity: number }>(
+    `SELECT capacity, available_capacity FROM shelters WHERE id = $1`,
+    [shelterId]
+  );
   if (checkRes.rows.length === 0) {
     throw new AppError(404, 'NOT_FOUND', 'Shelter not found.');
   }
 
+  const previousAvailable = Number(checkRes.rows[0].available_capacity);
   const totalCapacity = Number(checkRes.rows[0].capacity);
   if (input.availableCapacity > totalCapacity) {
     throw new AppError(
@@ -106,5 +113,19 @@ export async function updateShelterCapacity(
   `;
 
   const result = await query(updateSql, [input.availableCapacity, status, shelterId]);
+
+  await logAudit({
+    action: 'SHELTER_CAPACITY_UPDATED',
+    actorId: actorId || null,
+    targetType: 'SHELTER',
+    targetId: shelterId,
+    metadata: {
+      previousAvailable,
+      newAvailable: input.availableCapacity,
+      totalCapacity,
+    },
+    ipAddress,
+  });
+
   return result.rows[0];
 }

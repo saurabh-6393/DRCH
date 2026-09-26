@@ -7,6 +7,7 @@ import {
   QueueIncidentItem,
 } from './verifications.types';
 import { getIOServer } from '../../socket/socket.server';
+import { logAudit } from '../audit/audit.service';
 
 /**
  * Retrieves the verification backlog queue of incidents in UNDER_REVIEW status.
@@ -140,8 +141,9 @@ export async function submitReviewRecommendation(
  */
 export async function submitAuthorityVerification(
   incidentId: string,
-  _authorityUserId: string,
-  input: SubmitVerifyInput
+  authorityUserId: string,
+  input: SubmitVerifyInput,
+  ipAddress?: string
 ) {
   const client = await getClient();
 
@@ -168,6 +170,23 @@ export async function submitAuthorityVerification(
         'Incident has already been verified or rejected by another dispatcher.'
       );
     }
+
+    const action = input.decision === 'VERIFIED' ? 'INCIDENT_VERIFIED' : 'INCIDENT_REJECTED';
+    await logAudit(
+      {
+        action,
+        actorId: authorityUserId,
+        targetType: 'INCIDENT',
+        targetId: incidentId,
+        metadata: {
+          decision: input.decision,
+          severity: input.severity,
+          previousStatus: 'UNDER_REVIEW',
+        },
+        ipAddress,
+      },
+      client
+    );
 
     await client.query('COMMIT');
 

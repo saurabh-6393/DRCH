@@ -6,11 +6,12 @@ import {
   getActiveAlertsHandler,
   cancelAlertHandler,
 } from './alerts.controller';
+import { generalPublicLimiter } from '../../middleware/rateLimiter';
 
 const router = Router();
 
 // GET /api/v1/alerts - List active alerts (Public / Authenticated)
-router.get('/', getActiveAlertsHandler);
+router.get('/', generalPublicLimiter, getActiveAlertsHandler);
 
 // POST /api/v1/alerts - Publish geofenced warning alert (AUTHORITY, ADMIN)
 router.post(

@@ -4,10 +4,12 @@ import { logger } from '../../shared/logger';
 import { CreateAlertInput, AlertItem } from './alerts.types';
 import { getIOServer } from '../../socket/socket.server';
 import { sendAlertNotifications } from '../notifications/notifications.service';
+import { logAudit } from '../audit/audit.service';
 
 export async function createAlert(
   userId: string,
-  input: CreateAlertInput
+  input: CreateAlertInput,
+  ipAddress?: string
 ): Promise<AlertItem> {
   const client = await getClient();
   const alertId = crypto.randomUUID();
@@ -91,6 +93,22 @@ export async function createAlert(
       expiresAt,
       userId,
     ]);
+
+    await logAudit(
+      {
+        action: 'ALERT_CREATED',
+        actorId: userId,
+        targetType: 'ALERT',
+        targetId: alertId,
+        metadata: {
+          incidentId: input.incidentId,
+          severity: snapshotSeverity,
+          title: input.title,
+        },
+        ipAddress,
+      },
+      client
+    );
 
     await client.query('COMMIT');
 
@@ -206,7 +224,11 @@ export async function getActiveAlerts(): Promise<AlertItem[]> {
   }));
 }
 
-export async function cancelAlert(alertId: string): Promise<AlertItem> {
+export async function cancelAlert(
+  alertId: string,
+  actorId?: string,
+  ipAddress?: string
+): Promise<AlertItem> {
   const sql = `
     UPDATE alerts
     SET status = 'CANCELLED', updated_at = NOW()
@@ -221,6 +243,17 @@ export async function cancelAlert(alertId: string): Promise<AlertItem> {
   if (res.rows.length === 0) {
     throw new AppError(404, 'NOT_FOUND', 'Alert not found.');
   }
+
+  await logAudit({
+    action: 'ALERT_CANCELLED',
+    actorId: actorId || null,
+    targetType: 'ALERT',
+    targetId: alertId,
+    metadata: {
+      cancellationReason: null,
+    },
+    ipAddress,
+  });
 
   const row = res.rows[0];
   const alertItem: AlertItem = {

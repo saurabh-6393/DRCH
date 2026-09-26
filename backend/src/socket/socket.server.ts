@@ -2,6 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { verifyAccessToken, AccessTokenPayload } from '../shared/tokens';
 import { logger } from '../shared/logger';
+import { env } from '../config/env';
 
 export function getGridRoom(lat: number, lng: number): string {
   const cellX = Math.floor(lng / 0.01);
@@ -28,7 +29,7 @@ let ioServer: SocketIOServer | null = null;
 export function initSocketServer(httpServer: HttpServer): SocketIOServer {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: true,
+      origin: env.NODE_ENV === 'production' ? env.FRONTEND_URL : true,
       credentials: true,
     },
   });

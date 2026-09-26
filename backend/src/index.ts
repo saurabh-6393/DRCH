@@ -4,6 +4,8 @@ import { env } from './config/env';
 import { pool } from './db/pool';
 import { logger } from './shared/logger';
 import { initSocketServer } from './socket/socket.server';
+import { startSessionCleanup } from './services/sessionCleanup';
+import { initGracefulShutdown } from './services/shutdown.service';
 
 async function bootstrap() {
   // Verify database connection
@@ -20,6 +22,12 @@ async function bootstrap() {
   // Create HTTP & Socket.IO server
   const server = http.createServer(app);
   initSocketServer(server);
+
+  // Start scheduled session cleanup (Contract §6.8)
+  startSessionCleanup();
+
+  // Register graceful shutdown handlers (Contract §6.7)
+  initGracefulShutdown(server);
 
   server.listen(env.PORT, () => {
     logger.info(`🚀 Backend server running on port ${env.PORT} (${env.NODE_ENV})`);

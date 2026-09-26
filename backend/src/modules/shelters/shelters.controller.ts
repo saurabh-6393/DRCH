@@ -63,7 +63,7 @@ export async function updateCapacityHandler(req: Request, res: Response, next: N
     }
 
     const input = updateCapacitySchema.parse(req.body);
-    const updated = await updateShelterCapacity(id, input);
+    const updated = await updateShelterCapacity(id, input, req.user?.id, req.ip);
     sendSuccess(res, updated, 200);
   } catch (error) {
     if (error instanceof ZodError) {

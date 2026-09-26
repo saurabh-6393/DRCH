@@ -230,6 +230,25 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 );
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions (user_id);
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_location ON push_subscriptions USING GIST (last_location);
+
+-- ============================================================
+-- Phase 5 Tables
+-- ============================================================
+
+-- audit_logs: Administrative and lifecycle action audit trail
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID PRIMARY KEY,
+  action VARCHAR(100) NOT NULL,
+  actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  target_type VARCHAR(50) NOT NULL,
+  target_id UUID NOT NULL,
+  metadata JSONB,
+  ip_address INET,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs (actor_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_target ON audit_logs (target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs (created_at);
 `;
 
 const STANDARD_ROLES = [

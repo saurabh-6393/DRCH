@@ -28,3 +28,16 @@ miniodata/
 # OS
 *.swp
 *.swo
+
+# Backup directories
+*_proceed_backup/
+
+# Production environment
+*.env.production
+.env.production
+
+# TLS certificates
+certs/
+
+# Coverage (root)
+coverage/
