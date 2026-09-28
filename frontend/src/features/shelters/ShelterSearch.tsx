@@ -64,30 +64,39 @@ export const ShelterSearch: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-gray-800 pb-4">
-        <h2 className="text-2xl font-bold text-gray-100">Shelter Proximity Search</h2>
-        <p className="text-xs text-gray-400">
-          Find operational shelters sorted by PostGIS meter distance (Default radius: 50,000m / 50km)
-        </p>
+      <div className="border-b border-[var(--color-border)] pb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-[var(--color-text)]">
+            Shelter Proximity Search
+          </h2>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">
+            Real-time geospatial query &bull; PostGIS spatial meter radius &bull; Operational Evacuation Centres
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>POSTGIS ACTIVE</span>
+        </div>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-900/50 border border-red-500 text-red-200 rounded">
-          {error}
+        <div className="p-4 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-sm flex items-center gap-2">
+          <span>⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSearch} className="p-4 bg-gray-900 border border-gray-800 rounded-lg space-y-4">
+      <form onSubmit={handleSearch} className="p-6 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl space-y-4 transition-colors">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="text-xs font-medium text-gray-300">Latitude</label>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Latitude</label>
               <button
                 type="button"
                 onClick={handleGetCurrentLocation}
-                className="text-[10px] text-blue-400 underline hover:text-blue-300"
+                className="text-xs text-blue-500 underline hover:opacity-80"
               >
-                My Location
+                📡 My GPS
               </button>
             </div>
             <input
@@ -95,32 +104,32 @@ export const ShelterSearch: React.FC = () => {
               step="any"
               value={latitude}
               onChange={(e) => setLatitude(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded text-sm text-gray-200"
+              className="w-full px-4 py-2.5 font-mono bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1">Longitude</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">Longitude</label>
             <input
               type="number"
               step="any"
               value={longitude}
               onChange={(e) => setLongitude(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded text-sm text-gray-200"
+              className="w-full px-4 py-2.5 font-mono bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1">Radius (Meters)</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">Radius (Search Distance)</label>
             <select
               value={radiusMeters}
               onChange={(e) => setRadiusMeters(parseInt(e.target.value, 10))}
-              className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded text-sm text-gray-200"
+              className="w-full px-4 py-2.5 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
-              <option value={10000}>10,000m (10km)</option>
-              <option value={25000}>25,000m (25km)</option>
-              <option value={50000}>50,000m (50km - Default)</option>
-              <option value={100000}>100,000m (100km)</option>
+              <option value={10000} className="bg-[var(--color-surface)] text-[var(--color-text)]">10,000m (10 km)</option>
+              <option value={25000} className="bg-[var(--color-surface)] text-[var(--color-text)]">25,000m (25 km)</option>
+              <option value={50000} className="bg-[var(--color-surface)] text-[var(--color-text)]">50,000m (50 km - Standard)</option>
+              <option value={100000} className="bg-[var(--color-surface)] text-[var(--color-text)]">100,000m (100 km - Regional)</option>
             </select>
           </div>
         </div>
@@ -128,9 +137,19 @@ export const ShelterSearch: React.FC = () => {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 bg-blue-600 hover:bg-blue-500 font-medium text-white text-sm rounded shadow disabled:opacity-50"
+          className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-bold text-white text-sm rounded-xl shadow-lg shadow-blue-900/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
         >
-          {loading ? 'Searching PostGIS Shelters...' : 'Search Nearby Operational Shelters'}
+          {loading ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              <span>Searching PostGIS Shelters...</span>
+            </>
+          ) : (
+            <>
+              <span>🔍</span>
+              <span>Search Nearby Operational Shelters</span>
+            </>
+          )}
         </button>
       </form>
 
@@ -139,32 +158,42 @@ export const ShelterSearch: React.FC = () => {
 
       {searched && (
         <div className="space-y-3">
-          <h3 className="text-lg font-bold text-gray-200">
-            Operational Shelters Found ({shelters.length})
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-[var(--color-text)]">
+              Operational Shelters Found ({shelters.length})
+            </h3>
+            <span className="text-xs font-mono text-[var(--color-text-muted)]">
+              Radius: {(radiusMeters / 1000).toFixed(0)} km
+            </span>
+          </div>
 
           {shelters.length === 0 ? (
-            <div className="text-center py-6 bg-gray-900 border border-gray-800 rounded text-gray-400 text-sm">
+            <div className="text-center py-10 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl text-[var(--color-text-muted)] text-sm">
               No open operational shelters found within specified radius.
             </div>
           ) : (
             <div className="grid gap-3">
               {shelters.map((s) => (
-                <div key={s.id} className="p-4 bg-gray-900 border border-gray-800 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h4 className="font-bold text-gray-100">{s.name}</h4>
-                    <p className="text-xs text-gray-400">
-                      Coordinates: {s.location.lat.toFixed(4)}, {s.location.lng.toFixed(4)}
+                <div key={s.id} className="p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow flex justify-between items-center transition-colors">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
+                        OPEN
+                      </span>
+                      <h4 className="font-bold text-[var(--color-text)] text-base">{s.name}</h4>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] font-mono">
+                      Coordinates: {s.location.lat.toFixed(4)}°N, {s.location.lng.toFixed(4)}°E
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Capacity: <span className="text-emerald-400 font-semibold">{s.availableCapacity}</span> / {s.capacity} seats open
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      Available Capacity: <span className="text-emerald-500 font-bold text-sm">{s.availableCapacity}</span> / {s.capacity} seats open
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-mono font-bold text-blue-400">
+                    <span className="text-lg font-mono font-bold text-blue-500 block">
                       {(s.distanceMeters / 1000).toFixed(1)} km
                     </span>
-                    <span className="block text-[10px] text-gray-500">Straight-line distance</span>
+                    <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Distance</span>
                   </div>
                 </div>
               ))}

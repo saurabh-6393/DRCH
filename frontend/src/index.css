@@ -1,1 +1,154 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    
+    /* Default Dark Mode CSS Variables */
+    --color-bg: #070B12;
+    --color-surface: #0E1626;
+    --color-surface-card: #0F172A;
+    --color-border: #1E293B;
+    --color-text: #F8FAFC;
+    --color-text-muted: #94A3B8;
+  }
+  
+  html[data-theme="light"],
+  html.light {
+    /* Daylight Field Mode CSS Variables */
+    --color-bg: #F8FAFC;
+    --color-surface: #FFFFFF;
+    --color-surface-card: #FFFFFF;
+    --color-border: #CBD5E1;
+    --color-text: #0F172A;
+    --color-text-muted: #475569;
+  }
+
+  code, kbd, samp, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  body {
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Default Dark Mode (Tactical Command Center) */
+  html:not([data-theme="light"]) body,
+  html.dark body {
+    background-color: #070B12;
+    color: #F1F5F9;
+    background-image: 
+      radial-gradient(rgba(14, 165, 233, 0.04) 1px, transparent 0),
+      radial-gradient(rgba(14, 165, 233, 0.02) 1px, #070B12 1px);
+    background-size: 32px 32px, 32px 32px;
+    background-position: 0 0, 16px 16px;
+  }
+
+  /* Daylight Field Mode (High-Contrast Clean Light) */
+  html[data-theme="light"] body,
+  html.light body {
+    background-color: #F1F5F9;
+    color: #0F172A;
+    background-image: 
+      radial-gradient(rgba(14, 165, 233, 0.08) 1px, transparent 0),
+      radial-gradient(rgba(14, 165, 233, 0.02) 1px, #F1F5F9 1px);
+    background-size: 32px 32px, 32px 32px;
+    background-position: 0 0, 16px 16px;
+  }
+}
+
+/* Tactical Glassmorphism & HUD Glow Utilities */
+/* Dark Mode HUD */
+html:not([data-theme="light"]) .hud-glass,
+html.dark .hud-glass {
+  background: rgba(13, 20, 36, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html:not([data-theme="light"]) .hud-glass-card,
+html.dark .hud-glass-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(11, 17, 33, 0.95) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  color: #F1F5F9;
+}
+
+html:not([data-theme="light"]) .hud-glass-card:hover,
+html.dark .hud-glass-card:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 8px 30px -4px rgba(14, 165, 233, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Light Mode HUD (Daylight Field Operations) */
+html[data-theme="light"] .hud-glass,
+html.light .hud-glass {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: #E2E8F0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="light"] .hud-glass-card,
+html.light .hud-glass-card {
+  background: #FFFFFF;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid #CBD5E1;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  color: #0F172A;
+}
+
+html[data-theme="light"] .hud-glass-card:hover,
+html.light .hud-glass-card:hover {
+  border-color: #38BDF8;
+  box-shadow: 0 12px 30px -4px rgba(14, 165, 233, 0.15);
+}
+
+/* Light Theme High-Contrast Overrides */
+html[data-theme="light"] [class*="bg-[#080C14]"],
+html[data-theme="light"] [class*="bg-[#070B12]"],
+html[data-theme="light"] [class*="bg-[#090E1A]"],
+html[data-theme="light"] [class*="bg-[#060910]"] {
+  background-color: #F8FAFC;
+}
+
+html[data-theme="light"] [class*="bg-[#0B132B]"] {
+  background-color: #FFFFFF;
+  border-bottom-color: #E2E8F0;
+}
+
+/* Buttons with dark/vibrant backgrounds MUST keep pure crisp white text */
+button.bg-blue-600,
+button.bg-blue-700,
+a.bg-blue-600,
+a.bg-blue-700,
+button.bg-red-600,
+button.bg-red-700,
+a.bg-red-600,
+a.bg-red-700,
+button.bg-cyan-600,
+a.bg-cyan-600,
+button.bg-emerald-600,
+a.bg-emerald-600,
+button.bg-gradient-to-r,
+a.bg-gradient-to-r {
+  color: #FFFFFF !important;
+}
+
+/* Subtle Tactical Radar Scanline Animation */
+@keyframes radar-pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
+
+.animate-radar {
+  animation: radar-pulse 2.5s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}

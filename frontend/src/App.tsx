@@ -47,12 +47,15 @@ function PageLoadingFallback() {
   );
 }
 
+import { ThemeProvider } from './context/ThemeContext';
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<PageLoadingFallback />}>
+        <ThemeProvider>
+          <BrowserRouter>
+            <Suspense fallback={<PageLoadingFallback />}>
             <Routes>
               <Route element={<Layout />}>
                 <Route path="/login" element={<LoginPage />} />
@@ -103,6 +106,7 @@ function App() {
             </Routes>
           </Suspense>
         </BrowserRouter>
+        </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
