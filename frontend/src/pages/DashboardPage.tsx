@@ -1,14 +1,30 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BroadcastAlertModal from '../components/BroadcastAlertModal';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+
   const canReview = Boolean(
     user?.roles?.some((r) => ['VOLUNTEER', 'NGO', 'AUTHORITY', 'ADMIN'].includes(r))
   );
 
+  const isAuthority = Boolean(
+    user?.roles?.some((r) => ['AUTHORITY', 'ADMIN'].includes(r))
+  );
+
   return (
     <div className="space-y-8">
+      {/* Broadcast Alert Modal for Authority */}
+      {isAuthority && (
+        <BroadcastAlertModal
+          isOpen={isAlertModalOpen}
+          onClose={() => setIsAlertModalOpen(false)}
+        />
+      )}
+
       {/* 1. Command Center Hero & System Status Banner */}
       <div className="hud-glass-card rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800/80 relative overflow-hidden shadow-md">
         {/* Subtle Background Glow Effect */}
@@ -29,11 +45,21 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Quick Action SOS Button */}
-          <div className="flex-shrink-0">
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
+            {isAuthority && (
+              <button
+                type="button"
+                onClick={() => setIsAlertModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-orange-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all border border-amber-400/40 cursor-pointer"
+              >
+                <span>📢</span>
+                <span>ISSUE DISASTER ALERT</span>
+              </button>
+            )}
             <Link
               to="/report-incident"
-              className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white font-bold text-sm shadow-lg shadow-red-950/40 hover:scale-[1.02] active:scale-[0.98] transition-all border border-red-500/30 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-red-950/40 hover:scale-[1.02] active:scale-[0.98] transition-all border border-red-500/30 cursor-pointer"
             >
               <svg className="w-5 h-5 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />

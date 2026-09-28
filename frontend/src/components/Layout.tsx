@@ -3,6 +3,7 @@ import { Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import NotificationPrompt from './NotificationPrompt';
+import DisasterAlertBanner from './DisasterAlertBanner';
 
 export default function Layout() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -435,6 +436,7 @@ export default function Layout() {
 
       {/* 3. Main Operational Content Surface */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <DisasterAlertBanner />
         <NotificationPrompt />
         <Outlet />
       </main>

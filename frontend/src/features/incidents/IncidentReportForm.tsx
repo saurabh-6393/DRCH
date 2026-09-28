@@ -10,19 +10,107 @@ const CATEGORIES = [
   { value: 'OTHER', label: '🚨 Other Disaster Emergency' },
 ];
 
+// Client-side image compressor: dynamically scales high-res mobile photos to <1.5MB for 2G disaster connectivity
+async function compressImage(file: File, maxDimension = 1920, quality = 0.82): Promise<{ file: File; originalSize: number; compressedSize: number }> {
+  const originalSize = file.size;
+  if (file.size <= 1.2 * 1024 * 1024) {
+    return { file, originalSize, compressedSize: file.size };
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve({ file, originalSize, compressedSize: file.size });
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve({ file, originalSize, compressedSize: file.size });
+              return;
+            }
+            const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve({
+              file: compressedFile,
+              originalSize,
+              compressedSize: compressedFile.size,
+            });
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve({ file, originalSize, compressedSize: file.size });
+      img.src = readerEvent.target?.result as string;
+    };
+    reader.onerror = () => resolve({ file, originalSize, compressedSize: file.size });
+    reader.readAsDataURL(file);
+  });
+}
+
 export const IncidentReportForm: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const [category, setCategory] = useState('FLOOD');
-  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState(() => {
+    try {
+      const draft = localStorage.getItem('drch_incident_draft');
+      return draft ? JSON.parse(draft).category || 'FLOOD' : 'FLOOD';
+    } catch {
+      return 'FLOOD';
+    }
+  });
+  const [description, setDescription] = useState(() => {
+    try {
+      const draft = localStorage.getItem('drch_incident_draft');
+      return draft ? JSON.parse(draft).description || '' : '';
+    } catch {
+      return '';
+    }
+  });
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [compressing, setCompressing] = useState(false);
+  const [compressionStats, setCompressionStats] = useState<string | null>(null);
   const [fromMap, setFromMap] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successReport, setSuccessReport] = useState<IncidentReport | null>(null);
+
+  // Auto-save draft to localStorage to prevent data loss in offline network disruptions
+  useEffect(() => {
+    try {
+      localStorage.setItem('drch_incident_draft', JSON.stringify({ category, description }));
+    } catch {}
+  }, [category, description]);
 
   // Auto-fill coordinates from URL search params (e.g. from Map click)
   useEffect(() => {
@@ -35,21 +123,39 @@ export const IncidentReportForm: React.FC = () => {
     }
   }, [searchParams]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-
-      // Client-side file size check (5MB)
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError('File size exceeds 5MB limit. Please choose a smaller image.');
-        setFile(null);
-        setImagePreview(null);
-        return;
-      }
-
       setError(null);
-      setFile(selectedFile);
-      setImagePreview(URL.createObjectURL(selectedFile));
+      setCompressing(true);
+      setCompressionStats(null);
+
+      try {
+        const { file: finalFile, originalSize, compressedSize } = await compressImage(selectedFile);
+
+        // Sanity verify final file <= 5MB
+        if (finalFile.size > 5 * 1024 * 1024) {
+          setError('Image file is still too large after compression. Please select a smaller photo.');
+          setFile(null);
+          setImagePreview(null);
+          return;
+        }
+
+        if (originalSize > compressedSize) {
+          const origMb = (originalSize / (1024 * 1024)).toFixed(1);
+          const compMb = (compressedSize / (1024 * 1024)).toFixed(1);
+          setCompressionStats(`Auto-compressed for disaster connectivity: ${origMb}MB ➜ ${compMb}MB`);
+        }
+
+        setFile(finalFile);
+        setImagePreview(URL.createObjectURL(finalFile));
+      } catch {
+        // Fallback to original
+        setFile(selectedFile);
+        setImagePreview(URL.createObjectURL(selectedFile));
+      } finally {
+        setCompressing(false);
+      }
     }
   };
 
@@ -115,11 +221,15 @@ export const IncidentReportForm: React.FC = () => {
       });
 
       setSuccessReport(report);
-      // Reset form
+      // Reset form & remove draft
       setDescription('');
       setFile(null);
       setImagePreview(null);
+      setCompressionStats(null);
       setFromMap(false);
+      try {
+        localStorage.removeItem('drch_incident_draft');
+      } catch {}
     } catch (err: any) {
       const message = err.response?.data?.error?.message || 'Failed to submit incident report.';
       setError(message);
@@ -294,19 +404,31 @@ export const IncidentReportForm: React.FC = () => {
 
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">
-            Photographic Evidence (AI Triage &bull; Max 5MB)
+            Photographic Evidence (AI Triage &bull; Auto-Compressed)
           </label>
           <div className="p-4 border-2 border-dashed border-[var(--color-border)] rounded-xl bg-[var(--color-bg)] text-center transition-colors">
             <input
               type="file"
               accept="image/png, image/jpeg, image/webp"
               capture="environment"
+              disabled={compressing}
               onChange={handleFileChange}
-              className="w-full text-sm text-[var(--color-text-muted)] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-red-600 file:text-white hover:file:bg-red-500 cursor-pointer"
+              className="w-full text-sm text-[var(--color-text-muted)] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-red-600 file:text-white hover:file:bg-red-500 cursor-pointer disabled:opacity-50"
             />
-            <p className="text-[11px] text-[var(--color-text-muted)] mt-2">
-              📸 Supports direct camera capture on mobile or JPG, PNG, WEBP upload.
-            </p>
+            {compressing ? (
+              <div className="mt-2 text-xs text-blue-500 font-semibold flex items-center justify-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></span>
+                <span>Optimizing photo for disaster network transmission...</span>
+              </div>
+            ) : compressionStats ? (
+              <p className="text-[11px] text-emerald-500 font-semibold mt-2">
+                ⚡ {compressionStats}
+              </p>
+            ) : (
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-2">
+                📸 Supports direct camera capture on mobile or JPG, PNG, WEBP upload with automatic optimization.
+              </p>
+            )}
           </div>
           {imagePreview && (
             <div className="mt-3 relative inline-block">
